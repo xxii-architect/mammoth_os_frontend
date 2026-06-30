@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mammoth OS — Cortex V9</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<audio id="boot-chime" src="boot.mp3"></audio>
+
+<!-- BOOT SEQUENCE -->
+<div id="boot-screen" class="boot-screen">
+    <div class="boot-line">[BOOT] Initializing Mammoth OS Kernel...</div>
+    <div class="boot-line">[BOOT] Loading Krampus AI Assistant...</div>
+    <div class="boot-line">[BOOT] Activating Survival Modules...</div>
+    <div class="boot-line">[BOOT] Establishing Neural Cortex Link...</div>
+    <div class="boot-line">[BOOT] System Ready.</div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout hidden">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h2 class="sidebar-title">Mammoth OS</h2>
+        <ul class="nav">
+            <li onclick="switchPanel('dashboard')">📊 Dashboard</li>
+            <li onclick="switchPanel('modules')">🧩 Modules</li>
+            <li onclick="switchPanel('terminal')">💻 Terminal</li>
+            <li onclick="switchPanel('cortex')">🧠 Cortex</li>
+            <li onclick="switchPanel('agents')">🤖 Agents</li>
+        </ul>
+
+        <div class="autonomy-toggle">
+            <label>Autonomy Mode</label>
+            <select id="autonomy-select" onchange="changeAutonomyMode()">
+                <option value="semi">Semi-Autonomous</option>
+                <option value="full">Full Autonomous</option>
+            </select>
+        </div>
+
+        <div class="theme-toggle">
+            <label>Theme</label>
+            <select id="theme-select" onchange="changeTheme()">
+                <option value="default">Default</option>
+                <option value="night">Night Mode</option>
+                <option value="holo">Holographic Mode</option>
+            </select>
+        </div>
+
+        <div class="sarcasm-toggle">
+            <label>Krampus Sarcasm</label>
+            <input type="range" id="sarcasm-range" min="0" max="2" value="1" onchange="changeSarcasm()">
+        </div>
+
+        <div class="pulse-toggle">
+            <label>Pulse Mode</label>
+            <button onclick="togglePulse()">Toggle Pulse</button>
+        </div>
+    </div>
+
+    <!-- MAIN PANEL -->
+    <div class="main">
+
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+            <span id="status-heartbeat">●</span> Backend Connected
+        </div>
+
+        <!-- DASHBOARD PANEL -->
+        <div id="dashboard" class="panel active">
+            <div class="brand">
+                <h1>Mammoth OS</h1>
+                <p class="subtitle">Cortex V9</p>
+                <div class="compass">22</div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Revenue</h3>
+                    <p id="revenue">0</p>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Orders</h3>
+                    <p id="orders">0</p>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Lesson</h3>
+                    <p id="lesson">Week 1</p>
+                </div>
+
+                <div class="metric-card streak-card">
+                    <h3>Streak</h3>
+                    <p id="streak">0</p>
+                    <div class="flame"></div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="plantSeed()">🌱 Plant Seed</button>
+                <button onclick="nextLesson()">📘 Next Lesson</button>
+                <button onclick="loadLeaderboard()">🏆 Leaderboard</button>
+            </div>
+        </div>
+
+        <!-- MODULES PANEL -->
+        <div id="modules" class="panel">
+            <h2>Modules</h2>
+
+            <div class="module-grid">
+                <div class="module-card">
+                    <h3>AI Engineering</h3>
+                    <p>Grow your AI skills and unlock new lessons.</p>
+                    <button onclick="plantSeed()">Plant AI Seed</button>
+                </div>
+
+                <div class="module-card">
+                    <h3>Survival Training</h3>
+                    <p>Fieldcraft, wilderness skills, rugged knowledge.</p>
+                    <button disabled>Coming Soon</button>
+                </div>
+
+                <div class="module-card">
+                    <h3>Plant Identification</h3>
+                    <p>Spot medicinal and survival plants in the wild.</p>
+                    <button disabled>Coming Soon</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TERMINAL PANEL -->
+        <div id="terminal" class="panel">
+            <div class="terminal green">
+                <div class="terminal-header">
+                    Krampus Console
+
+                    <select id="terminal-theme" onchange="changeTerminalTheme()">
+                        <option value="green">Survival Green</option>
+                        <option value="blue">Cyberpunk Blue</option>
+                        <option value="orange">Inferno Orange</option>
+                        <option value="white">Ghost White</option>
+                    </select>
+                </div>
+
+                <div id="terminal-output" class="terminal-output"></div>
+
+                <div class="terminal-input">
+                    <input id="command-input" placeholder="Enter command...">
+                    <button onclick="runCommand()">Run</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CORTEX PANEL -->
+        <div id="cortex" class="panel">
+            <h2>Mammoth Cortex</h2>
+            <p>Neural Skill Tree</p>
+
+            <div id="skill-tree" class="skill-tree">
+                <div class="skill-node" data-skill="ai">AI Engineering</div>
+                <div class="skill-node" data-skill="survival">Survival</div>
+                <div class="skill-node" data-skill="plants">Plant ID</div>
+                <div class="skill-node" data-skill="business">Business</div>
+                <div class="skill-node" data-skill="fieldcraft">Fieldcraft</div>
+            </div>
+
+            <canvas id="neural-links" class="neural-links"></canvas>
+
+            <div id="skill-info" class="skill-info">
+                <h3>Skill Info</h3>
+                <p id="skill-description">Select a skill node.</p>
+                <button id="unlock-btn" onclick="unlockSkill()">Unlock Skill</button>
+            </div>
+        </div>
+
+        <!-- AGENT DASHBOARD PANEL -->
+        <div id="agents" class="panel">
+            <h2>Agent Dashboard</h2>
+            <p>Monitor autonomous agents, their tasks, and their messages.</p>
+
+            <div class="agent-grid">
+                <div class="agent-card" data-agent="coding">
+                    <div class="agent-avatar avatar-coding"></div>
+                    <h3>CodingAgent</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Precise / Analytical</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+
+                <div class="agent-card" data-agent="curriculum">
+                    <div class="agent-avatar avatar-curriculum"></div>
+                    <h3>CurriculumAgent</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Creative / Structured</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+
+                <div class="agent-card" data-agent="reflection">
+                    <div class="agent-avatar avatar-reflection"></div>
+                    <h3>ReflectionAgent</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Observant / Minimalist</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+
+                <div class="agent-card" data-agent="brand">
+                    <div class="agent-avatar avatar-brand"></div>
+                    <h3>BrandVoiceAgent</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Stylish / Expressive</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+
+                <div class="agent-card" data-agent="market">
+                    <div class="agent-avatar avatar-market"></div>
+                    <h3>MarketIntelAgent</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Calm / Analytical</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+
+                <div class="agent-card" data-agent="taskengine">
+                    <div class="agent-avatar avatar-taskengine"></div>
+                    <h3>AutonomousTaskEngine</h3>
+                    <p>Status: <span class="agent-status">Idle</span></p>
+                    <p>Task: <span class="agent-task">None</span></p>
+                    <p>Last: <span class="agent-last">None</span></p>
+                    <p>Personality: Strategic / Orchestration</p>
+                    <p class="agent-emotion">Emotion: Neutral</p>
+                </div>
+            </div>
+
+            <h3>Task Queue</h3>
+            <div id="task-queue" class="task-queue"></div>
+
+            <h3>Agent Message Board</h3>
+            <div id="agent-messages" class="agent-messages"></div>
+
+            <h3>Agent Requests & Suggestions</h3>
+            <div id="agent-requests" class="agent-requests"></div>
+
+            <h3>Agent Memory Log</h3>
+            <div id="agent-memory" class="agent-memory"></div>
+        </div>
+
+    </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notifications"></div>
+
+<!-- UI SHORTCUT BUTTON -->
+<div id="ui-shortcut" class="ui-shortcut" onclick="openMammothUI()">🦣</div>
+
+<script src="app.js"></script>
+
+<!-- SURVIVAL TEXTURES -->
+<div class="texture-overlay"></div>
+<div class="texture-grit"></div>
+<div class="texture-scanlines"></div>
+
+</body>
+</html>
