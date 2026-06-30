@@ -1,0 +1,29 @@
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Node / build systems (if added later)
+node_modules/
+dist/
+build/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Python caches (if you ever mix Python here)
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# Windows junk
+desktop.ini
+
+# Frontend cache
+.cache/
