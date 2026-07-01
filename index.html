@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <title>Mammoth OS — Cortex V9</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- in <head> -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="/favicon-64.png" type="image/png">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 64x64">
+    <meta name="theme-color" content="#111827">
 </head>
 <body>
 
@@ -98,6 +104,14 @@
                     <div class="flame"></div>
                 </div>
             </div>
+
+            <!-- Lesson viewer -->
+            <section id="lesson-panel" class="module-card">
+              <h3 id="lesson-title">Lesson Title</h3>
+              <div id="lesson-content">Lesson content will appear here.</div>
+              <div id="lesson-xp">XP: 0</div>
+              <button id="complete-lesson-btn">Complete</button>
+            </section>
 
             <div class="actions">
                 <button onclick="plantSeed()">🌱 Plant Seed</button>

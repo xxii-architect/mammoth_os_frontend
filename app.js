@@ -1,4 +1,4 @@
-// app.js - Final combined frontend file with Local State, Lesson Progression, XP, and UI wiring
+// app.js - Full frontend replacement with Lesson Progression, Complete button, and safe boot chime
 const API = "http://127.0.0.1:8000";
 
 /* ---------------------------
@@ -438,6 +438,7 @@ async function plantSeed() {
   rememberAgentEvent("curriculum", "Seed planted for AI Engineering.");
 }
 
+/* nextLesson uses Lesson Progression Engine */
 async function nextLesson() {
   try {
     await fetch(`${API}/run-intent`, {
@@ -686,7 +687,7 @@ function cascadingTasks() {
   runStep();
 }
 
-/* Agent personalities & emotions (unchanged) */
+/* Agent personalities & emotions */
 const agentPersonalities = {
   coding: ["Precise", "Logical", "Efficient"],
   curriculum: ["Creative", "Structured", "Warm"],
@@ -795,7 +796,7 @@ setInterval(() => {
   hb.style.opacity = hb.style.opacity === "0.4" ? "1" : "0.4";
 }, 800);
 
-/* INTERVALS & BOOT SEQUENCE */
+/* INTERVALS */
 setInterval(updateMetrics, 3000);
 setInterval(simulateTaskEngine, 5000);
 setInterval(cascadingTasks, 20000);
@@ -825,20 +826,122 @@ setInterval(() => {
     .forEach(updateEmotion);
 }, 10000);
 
-setTimeout(updateMetrics, 1000);
-
-setTimeout(() => {
-  const chime = document.getElementById("boot-chime");
-  if (chime) {
+/* Safe boot chime handling and DOM-ready initialization */
+function tryPlayChimeOnGesture(chime) {
+  if (!chime) return;
+  function tryPlay() {
     chime.volume = 0.4;
-    chime.play();
+    chime.play().catch(() => {});
+    window.removeEventListener("pointerdown", tryPlay);
+    window.removeEventListener("keydown", tryPlay);
   }
-}, 500);
+  chime.play().catch(() => {
+    window.addEventListener("pointerdown", tryPlay, { once: true });
+    window.addEventListener("keydown", tryPlay, { once: true });
+  });
+}
 
+/* Complete button wiring (safe to run multiple times) */
+function wireCompleteButton() {
+  const completeBtn = document.getElementById("complete-lesson-btn");
+  if (!completeBtn) return;
+  // Remove existing listener if present to avoid duplicates
+  completeBtn.replaceWith(completeBtn.cloneNode(true));
+  const newBtn = document.getElementById("complete-lesson-btn");
+  if (!newBtn) return;
+  newBtn.addEventListener("click", async () => {
+    try {
+      const lessonObj = getCurrentLessonObj();
+      localState.xp = (localState.xp || 0) + (lessonObj.xp || 0);
+
+      const advanced = advanceProgression();
+      if (!advanced) {
+        notify("🏁 You reached the end of the curriculum. Great work!");
+        logToTerminal("Krampus: Curriculum complete.");
+        await saveState();
+        return;
+      }
+
+      setCurrentLessonUI();
+      localState.streak = (localState.streak || 0) + 1;
+      await saveState();
+
+      notify(`📘 Advanced to ${localState.current_lesson} (+${lessonObj.xp || 0} XP)`);
+      logToTerminal(`Krampus: Completed lesson and advanced → ${localState.current_lesson}`);
+
+      // Post granular progress to backend if endpoint exists (safe to ignore errors)
+      try {
+        await fetch(`${API}/state/lesson`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            moduleIndex: localState.moduleIndex,
+            sectionIndex: localState.sectionIndex,
+            lessonIndex: localState.lessonIndex
+          })
+        });
+      } catch (e) {
+        // ignore if endpoint not present
+      }
+    } catch (e) {
+      console.error("Complete handler failed", e);
+      logToTerminal("Krampus: Error completing lesson.");
+    }
+  });
+}
+
+/* Boot sequence */
 setTimeout(async () => {
   document.querySelector(".layout").classList.remove("hidden");
   neuralLinks();
   await loadState(); // load persisted state on boot
-  // Ensure UI reflects progression indices loaded from state
-  setCurrentLessonUI();
+
+  // Ensure DOM is ready before updating lesson UI and wiring button
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      setCurrentLessonUI();
+      showLessonContent();
+      wireCompleteButton();
+      const chime = document.getElementById("boot-chime");
+      tryPlayChimeOnGesture(chime);
+    });
+  } else {
+    setCurrentLessonUI();
+    showLessonContent();
+    wireCompleteButton();
+    const chime = document.getElementById("boot-chime");
+    tryPlayChimeOnGesture(chime);
+  }
 }, 3200);
+
+/* Small immediate boot helpers */
+setTimeout(updateMetrics, 1000);
+
+setTimeout(() => {
+  const chime = document.getElementById("boot-chime");
+  tryPlayChimeOnGesture(chime);
+}, 500);
+
+/* TERMINAL COMMANDS wiring (input handler) */
+function runCommandFromInput() {
+  const input = document.getElementById("command-input");
+  if (!input) return;
+  const raw = input.value.trim();
+  input.value = "";
+  if (!raw) return;
+  const parts = raw.split(" ");
+  const base = parts[0];
+  const args = parts.slice(1);
+  if (commands[base]) {
+    commands[base](...args);
+  } else {
+    logToTerminal("Krampus: Unknown command.");
+  }
+}
+
+/* Expose some helpers to console for quick debugging */
+window.goToProgress = goToProgress;
+window.setCurrentLessonUI = setCurrentLessonUI;
+window.showLessonContent = showLessonContent;
+window.wireCompleteButton = wireCompleteButton;
+window.getCurrentLessonObj = getCurrentLessonObj;
