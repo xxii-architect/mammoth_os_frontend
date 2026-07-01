@@ -1,4 +1,3 @@
-// app.js - Final combined frontend file with Local State, Lesson Progression, XP, and UI wiring
 const API = "http://127.0.0.1:8000";
 
 /* ---------------------------
@@ -8,186 +7,16 @@ let localState = {
   revenue: 0,
   orders: 0,
   current_lesson: "Week 1",
-  streak: 0,
-  xp: 0,
-  moduleIndex: 0,
-  sectionIndex: 0,
-  lessonIndex: 0
+  streak: 0
 };
 
-let loadedFromBackend = false;
-let lastSavedAt = null;
-
-/* ---------------------------
-   Lesson Progression Engine (curriculum with content & XP)
-   --------------------------- */
-const curriculum = [
-  {
-    id: "module-1",
-    title: "Foundations",
-    sections: [
-      {
-        id: "m1s1",
-        title: "Intro",
-        lessons: [
-          { title: "Welcome", content: "Welcome to Mammoth OS — your learning journey begins.", xp: 10 },
-          { title: "Setup", content: "Install tools, configure environment, and run the demo.", xp: 15 },
-          { title: "Philosophy", content: "Why we build agents: autonomy, safety, and usefulness.", xp: 10 }
-        ]
-      },
-      {
-        id: "m1s2",
-        title: "Basics",
-        lessons: [
-          { title: "Variables", content: "Variables store data. Practice with examples.", xp: 8 },
-          { title: "Control Flow", content: "Ifs, loops, and functions — the building blocks.", xp: 12 }
-        ]
-      }
-    ]
-  },
-  {
-    id: "module-2",
-    title: "Agents",
-    sections: [
-      {
-        id: "m2s1",
-        title: "Agent Basics",
-        lessons: [
-          { title: "Agent Anatomy", content: "Agents have sensors, actuators, and policies.", xp: 15 },
-          { title: "Agent Loop", content: "Sense → Plan → Act. Implement a simple loop.", xp: 15 }
-        ]
-      },
-      {
-        id: "m2s2",
-        title: "Coordination",
-        lessons: [
-          { title: "Message Bus", content: "Agents communicate via messages and events.", xp: 12 },
-          { title: "Orchestration", content: "Coordinating multiple agents for complex tasks.", xp: 18 }
-        ]
-      }
-    ]
-  },
-  {
-    id: "module-3",
-    title: "Advanced",
-    sections: [
-      {
-        id: "m3s1",
-        title: "Scaling",
-        lessons: [
-          { title: "Sharding", content: "Split work across nodes to scale horizontally.", xp: 20 },
-          { title: "Caching", content: "Use caching to reduce latency and load.", xp: 12 }
-        ]
-      }
-    ]
-  }
-];
-
-/* Ensure progression fields exist */
-if (typeof localState.moduleIndex === "undefined") localState.moduleIndex = 0;
-if (typeof localState.sectionIndex === "undefined") localState.sectionIndex = 0;
-if (typeof localState.lessonIndex === "undefined") localState.lessonIndex = 0;
-
-/* Helpers for curriculum */
-function getCurrentModule() {
-  return curriculum[localState.moduleIndex] || curriculum[0];
-}
-function getCurrentSection() {
-  const m = getCurrentModule();
-  return (m && m.sections[localState.sectionIndex]) || (m && m.sections[0]);
-}
-function getCurrentLessonObj() {
-  const s = getCurrentSection();
-  return (s && s.lessons[localState.lessonIndex]) || { title: "Lesson", content: "", xp: 0 };
-}
-function getCurrentLessonText() {
-  const m = getCurrentModule();
-  const s = getCurrentSection();
-  const l = getCurrentLessonObj();
-  return `${m.title} • ${s.title} • ${l.title}`;
-}
-
-/* Update UI lesson display and persist current_lesson string */
-function setCurrentLessonUI() {
-  localState.current_lesson = getCurrentLessonText();
-  applyStateToUI();
-  showLessonContent();
-}
-
-/* Advance progression: returns true if advanced, false if at end */
-function advanceProgression() {
-  const mCount = curriculum.length;
-  const m = curriculum[localState.moduleIndex];
-  if (!m) return false;
-  const sCount = m.sections.length;
-  const s = m.sections[localState.sectionIndex];
-  if (!s) return false;
-  const lCount = s.lessons.length;
-
-  // Advance lesson index
-  if (localState.lessonIndex + 1 < lCount) {
-    localState.lessonIndex += 1;
-    return true;
-  }
-
-  // Move to next section
-  if (localState.sectionIndex + 1 < sCount) {
-    localState.sectionIndex += 1;
-    localState.lessonIndex = 0;
-    return true;
-  }
-
-  // Move to next module
-  if (localState.moduleIndex + 1 < mCount) {
-    localState.moduleIndex += 1;
-    localState.sectionIndex = 0;
-    localState.lessonIndex = 0;
-    return true;
-  }
-
-  // End of curriculum
-  return false;
-}
-
-/* Jump to a specific module/section/lesson (safe bounds) */
-function goToProgress(moduleIdx = 0, sectionIdx = 0, lessonIdx = 0) {
-  localState.moduleIndex = Math.max(0, Math.min(moduleIdx, curriculum.length - 1));
-  const m = curriculum[localState.moduleIndex];
-  localState.sectionIndex = Math.max(0, Math.min(sectionIdx, m.sections.length - 1));
-  const s = m.sections[localState.sectionIndex];
-  localState.lessonIndex = Math.max(0, Math.min(lessonIdx, s.lessons.length - 1));
-  setCurrentLessonUI();
-  saveState();
-}
-
-/* Show lesson content in UI (if element exists) */
-function showLessonContent() {
-  const contentEl = document.getElementById("lesson-content");
-  const lessonObj = getCurrentLessonObj();
-  if (!contentEl) return;
-  contentEl.innerText = lessonObj.content || "No content available for this lesson.";
-  const titleEl = document.getElementById("lesson-title");
-  if (titleEl) titleEl.innerText = lessonObj.title || "Lesson";
-  const xpEl = document.getElementById("lesson-xp");
-  if (xpEl) xpEl.innerText = `XP: ${lessonObj.xp || 0}`;
-}
-
-/* ---------------------------
-   State load/save
-   --------------------------- */
-
 async function loadState() {
+  // Try backend first
   try {
     const res = await fetch(`${API}/state`);
     if (!res.ok) throw new Error("Backend state fetch failed");
     const data = await res.json();
     localState = { ...localState, ...data };
-    // Ensure progression indices exist
-    if (typeof localState.moduleIndex === "undefined") localState.moduleIndex = 0;
-    if (typeof localState.sectionIndex === "undefined") localState.sectionIndex = 0;
-    if (typeof localState.lessonIndex === "undefined") localState.lessonIndex = 0;
-    if (typeof localState.xp === "undefined") localState.xp = 0;
-    loadedFromBackend = true;
     applyStateToUI();
     console.log("State loaded from backend:", localState);
     return localState;
@@ -197,11 +26,6 @@ async function loadState() {
     if (raw) {
       try {
         localState = { ...localState, ...JSON.parse(raw) };
-        if (typeof localState.moduleIndex === "undefined") localState.moduleIndex = 0;
-        if (typeof localState.sectionIndex === "undefined") localState.sectionIndex = 0;
-        if (typeof localState.lessonIndex === "undefined") localState.lessonIndex = 0;
-        if (typeof localState.xp === "undefined") localState.xp = 0;
-        loadedFromBackend = false;
         applyStateToUI();
         console.log("State loaded from localStorage:", localState);
         return localState;
@@ -217,8 +41,6 @@ async function loadState() {
 async function saveState() {
   // Persist to localStorage immediately
   localStorage.setItem("mammoth_state", JSON.stringify(localState));
-  lastSavedAt = new Date().toLocaleTimeString();
-  updateStateIndicators();
   // Try to persist to backend
   try {
     const res = await fetch(`${API}/state`, {
@@ -228,39 +50,24 @@ async function saveState() {
     });
     if (!res.ok) throw new Error("Backend state save failed");
     const json = await res.json();
-    loadedFromBackend = true;
-    lastSavedAt = new Date().toLocaleTimeString();
-    updateStateIndicators();
     console.log("State saved to backend:", json);
     return json;
   } catch (err) {
     console.warn("Failed to save state to backend, kept in localStorage:", err);
-    loadedFromBackend = false;
-    updateStateIndicators();
     return null;
   }
 }
 
 function applyStateToUI() {
-  const { revenue, orders, current_lesson, streak, xp } = localState;
+  const { revenue, orders, current_lesson, streak } = localState;
   const revEl = document.getElementById("revenue");
   const ordEl = document.getElementById("orders");
   const lessonEl = document.getElementById("lesson");
   const streakEl = document.getElementById("streak");
-  const xpEl = document.getElementById("xp");
   if (revEl) revEl.innerText = revenue;
   if (ordEl) ordEl.innerText = orders;
   if (lessonEl) lessonEl.innerText = current_lesson;
   if (streakEl) streakEl.innerText = streak;
-  if (xpEl) xpEl.innerText = xp;
-  updateStateIndicators();
-}
-
-function updateStateIndicators() {
-  const srcEl = document.getElementById("state-source");
-  const savedEl = document.getElementById("state-last-saved");
-  if (srcEl) srcEl.innerText = loadedFromBackend ? "Backend" : "Local";
-  if (savedEl) savedEl.innerText = lastSavedAt ? `Last saved: ${lastSavedAt}` : "";
 }
 
 /* ---------------------------
@@ -270,8 +77,7 @@ function updateStateIndicators() {
 /* PANEL SWITCHING */
 function switchPanel(panel) {
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  const el = document.getElementById(panel);
-  if (el) el.classList.add("active");
+  document.getElementById(panel).classList.add("active");
 }
 
 /* TERMINAL LOGGING */
@@ -299,8 +105,7 @@ function notify(msg) {
 let autonomyMode = "semi";
 
 function changeAutonomyMode() {
-  const sel = document.getElementById("autonomy-select");
-  autonomyMode = sel ? sel.value : "semi";
+  autonomyMode = document.getElementById("autonomy-select").value;
   notify(`⚙️ Autonomy Mode: ${autonomyMode === "semi" ? "Semi-Autonomous" : "Full Autonomous"}`);
   logToTerminal(`Krampus: Autonomy mode switched to ${autonomyMode}.`);
 }
@@ -320,8 +125,7 @@ document.addEventListener("keydown", (e) => {
 
 /* THEME SWITCHER */
 function changeTheme() {
-  const themeEl = document.getElementById("theme-select");
-  const theme = themeEl ? themeEl.value : "default";
+  const theme = document.getElementById("theme-select").value;
   document.body.classList.remove("night", "holo");
 
   if (theme === "night") {
@@ -353,8 +157,7 @@ function togglePulse() {
 let sarcasmLevel = 1; // 0 = soft, 1 = normal, 2 = spicy
 
 function changeSarcasm() {
-  const el = document.getElementById("sarcasm-range");
-  sarcasmLevel = el ? parseInt(el.value, 10) : 1;
+  sarcasmLevel = parseInt(document.getElementById("sarcasm-range").value, 10);
   notify(`😈 Krampus Sarcasm Level: ${sarcasmLevel}`);
 }
 
@@ -405,10 +208,7 @@ function krampusSpeak(type) {
   logToTerminal(`Krampus: ${line}`);
 }
 
-/* ---------------------------
-   Intent / Action functions
-   --------------------------- */
-
+/* INTENT FUNCTIONS */
 async function plantSeed() {
   try {
     await fetch(`${API}/run-intent`, {
@@ -426,15 +226,13 @@ async function plantSeed() {
   // Update local state
   localState.orders = (localState.orders || 0) + 1;
   localState.revenue = (localState.revenue || 0) + 5;
-  // small XP reward for planting
-  localState.xp = (localState.xp || 0) + 3;
 
   await saveState();
   applyStateToUI();
 
   krampusSpeak("seed");
   logToTerminal("Krampus: Seed planted.");
-  notify("🌱 Seed planted! +3 XP");
+  notify("🌱 Seed planted!");
   rememberAgentEvent("curriculum", "Seed planted for AI Engineering.");
 }
 
@@ -449,25 +247,24 @@ async function nextLesson() {
     logToTerminal("Krampus: nextLesson intent failed (backend).");
   }
 
-  const advanced = advanceProgression();
-  if (!advanced) {
-    notify("🏁 You reached the end of the curriculum. Great work!");
-    logToTerminal("Krampus: Curriculum complete.");
-    return;
+  // Advance lesson (naive Week N increment)
+  const current = localState.current_lesson || "Week 1";
+  const match = current.match(/Week\s*(\d+)/i);
+  if (match) {
+    const next = `Week ${parseInt(match[1], 10) + 1}`;
+    localState.current_lesson = next;
+  } else {
+    localState.current_lesson = "Week 2";
   }
-
-  // Award XP for completing previous lesson
-  const completedLesson = getCurrentLessonObj();
-  localState.xp = (localState.xp || 0) + (completedLesson.xp || 0);
-
-  setCurrentLessonUI();
   localState.streak = (localState.streak || 0) + 1;
+
   await saveState();
+  applyStateToUI();
 
   krampusSpeak("lesson");
   logToTerminal("Krampus: Lesson advanced.");
-  notify(`📘 Advanced to ${localState.current_lesson} (+${completedLesson.xp || 0} XP)`);
-  rememberAgentEvent("curriculum", `Lesson advanced to ${localState.current_lesson}`);
+  notify("📘 Advanced to next lesson!");
+  rememberAgentEvent("curriculum", "Lesson advanced.");
 }
 
 async function loadLeaderboard() {
@@ -497,7 +294,6 @@ async function updateMetrics() {
     // Prefer backend metrics but fall back to localState
     localState.revenue = data.revenue ?? localState.revenue;
     localState.orders = data.orders ?? localState.orders;
-    // backend uses "lessons" key for current lesson string
     localState.current_lesson = data.lessons ?? localState.current_lesson;
     localState.streak = data.streak ?? localState.streak;
 
@@ -508,10 +304,7 @@ async function updateMetrics() {
   }
 }
 
-/* ---------------------------
-   Skill tree, agents, UI extras
-   --------------------------- */
-
+/* SKILL TREE ENGINE */
 const skillDescriptions = {
   ai: "AI Engineering: Neural networks, agents, Mammoth OS internals.",
   survival: "Survival: Fieldcraft, firecraft, shelter, rugged knowledge.",
@@ -544,7 +337,7 @@ function unlockSkill() {
   rememberAgentEvent("reflection", `Skill unlocked: ${selectedSkill}`);
 }
 
-/* NEURAL LINKS, AGENTS, EMOTIONS, TASKS (unchanged) */
+/* NEURAL LINK ANIMATION */
 function neuralLinks() {
   const canvas = document.getElementById("neural-links");
   if (!canvas) return;
@@ -582,6 +375,7 @@ function neuralLinks() {
   draw();
 }
 
+/* AGENT DASHBOARD HELPERS */
 function updateAgent(agent, status, task) {
   const card = document.querySelector(`.agent-card[data-agent="${agent}"]`);
   if (!card) return;
@@ -602,9 +396,12 @@ function agentMessage(agent, msg) {
   board.scrollTop = board.scrollHeight;
 }
 
+/* TASK QUEUE */
 let taskQueue = [];
+
 function addTask(agent, task) {
   taskQueue.push({ agent, task });
+
   const queue = document.getElementById("task-queue");
   if (!queue) return;
   const line = document.createElement("div");
@@ -613,6 +410,7 @@ function addTask(agent, task) {
   queue.scrollTop = queue.scrollHeight;
 }
 
+/* AGENT REQUESTS & SUGGESTIONS */
 function agentRequest(agent, msg) {
   const feed = document.getElementById("agent-requests");
   if (!feed) return;
@@ -622,6 +420,7 @@ function agentRequest(agent, msg) {
   feed.scrollTop = feed.scrollHeight;
 }
 
+/* AGENT MEMORY */
 function rememberAgentEvent(agent, msg) {
   const memory = document.getElementById("agent-memory");
   if (!memory) return;
@@ -632,6 +431,7 @@ function rememberAgentEvent(agent, msg) {
   memory.scrollTop = memory.scrollHeight;
 }
 
+/* AUTONOMOUS TASKENGINE SIMULATION */
 function simulateTaskEngine() {
   if (autonomyMode !== "full") return;
 
@@ -655,6 +455,7 @@ function simulateTaskEngine() {
   }, 3000);
 }
 
+/* AUTONOMOUS CASCADING TASKS */
 function cascadingTasks() {
   if (autonomyMode !== "full") return;
 
@@ -686,7 +487,7 @@ function cascadingTasks() {
   runStep();
 }
 
-/* Agent personalities & emotions (unchanged) */
+/* AGENT PERSONALITIES */
 const agentPersonalities = {
   coding: ["Precise", "Logical", "Efficient"],
   curriculum: ["Creative", "Structured", "Warm"],
@@ -709,6 +510,7 @@ function updatePersonality(agent) {
   if (p) p.innerText = `Personality: ${trait}`;
 }
 
+/* AGENT EMOTION SYSTEM */
 const agentEmotions = ["Calm", "Focused", "Overloaded", "Curious", "Frustrated"];
 
 function updateEmotion(agent) {
@@ -731,7 +533,7 @@ function updateEmotion(agent) {
   agentMessage(agent, `Emotion shift detected → ${emotion}`);
 }
 
-/* TERMINAL THEMES & COMMANDS */
+/* TERMINAL THEMES */
 function changeTerminalTheme() {
   const theme = document.getElementById("terminal-theme").value;
   const terminal = document.querySelector(".terminal");
@@ -743,9 +545,10 @@ function changeTerminalTheme() {
   notify(`💻 Terminal Theme: ${theme}`);
 }
 
+/* TERMINAL COMMANDS */
 const commands = {
   help: () => {
-    logToTerminal("Commands: help, seed, lesson, skills, unlock <skill>, clear, goto <m> <s> <l>");
+    logToTerminal("Commands: help, seed, lesson, skills, unlock <skill>, clear");
   },
   clear: () => {
     const out = document.getElementById("terminal-output");
@@ -759,30 +562,23 @@ const commands = {
   unlock: (skill) => {
     selectedSkill = skill;
     unlockSkill();
-  },
-  goto: (m, s, l) => {
-    const mi = parseInt(m, 10) || 0;
-    const si = parseInt(s, 10) || 0;
-    const li = parseInt(l, 10) || 0;
-    goToProgress(mi, si, li);
-    logToTerminal(`Jumped to ${localState.current_lesson}`);
   }
 };
 
 function runCommand() {
   const input = document.getElementById("command-input");
   if (!input) return;
-  const raw = input.value.trim();
+  const cmd = input.value.trim();
   input.value = "";
 
-  if (!raw) return;
+  if (!cmd) return;
 
-  const parts = raw.split(" ");
+  const parts = cmd.split(" ");
   const base = parts[0];
-  const args = parts.slice(1);
+  const arg = parts[1];
 
   if (commands[base]) {
-    commands[base](...args);
+    commands[base](arg);
   } else {
     logToTerminal("Krampus: Unknown command.");
   }
@@ -839,6 +635,4 @@ setTimeout(async () => {
   document.querySelector(".layout").classList.remove("hidden");
   neuralLinks();
   await loadState(); // load persisted state on boot
-  // Ensure UI reflects progression indices loaded from state
-  setCurrentLessonUI();
 }, 3200);
